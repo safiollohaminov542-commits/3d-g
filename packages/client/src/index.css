@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Disable iOS callout/long-press on game UI */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+}
+
+/* Allow some elements (text inputs in lobby) to receive touch input. */
+.allow-touch {
+  touch-action: auto;
+}
