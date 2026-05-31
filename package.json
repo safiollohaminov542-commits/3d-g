@@ -1,0 +1,21 @@
+{
+  "name": "3d-g",
+  "version": "0.1.0",
+  "private": true,
+  "description": "3D online multiplayer racing game (open-world city, top-down) with React + Three.js + Colyseus",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "dev:client": "pnpm -F client dev",
+    "dev:server": "pnpm -F server dev",
+    "build": "pnpm -r build",
+    "start:server": "pnpm -F server start",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
