@@ -24,7 +24,12 @@ export function RemotePlayer({ state }: RemotePlayerProps) {
     if (!g) return;
 
     targetPos.set(state.x, state.y, state.z);
-    targetQuat.set(state.qx, state.qy, state.qz, state.qw);
+    // Same all-zero-quaternion guard as in <Player>: keeps the transform
+    // valid before the first state patch arrives.
+    const w = state.qw === 0 && state.qx === 0 && state.qy === 0 && state.qz === 0
+      ? 1
+      : state.qw;
+    targetQuat.set(state.qx, state.qy, state.qz, w);
 
     // Critically-damped-ish smoothing. Higher k → snappier, lower → smoother.
     const k = 1 - Math.exp(-dt * 14);

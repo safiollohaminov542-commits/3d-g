@@ -5,6 +5,11 @@ import react from "@vitejs/plugin-react";
 // (see `pnpm dev:server`); the URL is configured via VITE_SERVER_URL.
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Surfaced in the in-game debug overlay so we can tell whether a user
+    // is on a freshly-deployed build or a stale cached one.
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   server: {
     host: "0.0.0.0",
     port: 5173,

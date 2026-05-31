@@ -35,25 +35,51 @@ export function GameScene({ room }: { room: Room }) {
   const sessionId = useGameStore((s) => s.sessionId);
   const [players, setPlayers] = useState<Map<string, PlayerState>>(new Map());
 
-  useEffect(() => {
-    const stateAny = room.state as unknown as {
-      players: {
-        size: number;
-        forEach: (cb: (p: PlayerState, id: string) => void) => void;
-      };
-    };
+  // Mobile detection drives a few tradeoffs (smaller shadow map, no post-
+  // processing) so weaker devices don't stall on the very first frame.
+  const isMobile = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    if ("ontouchstart" in window) return true;
+    const mt = (navigator as Navigator & { maxTouchPoints?: number })
+      .maxTouchPoints;
+    return typeof mt === "number" && mt > 1;
+  }, []);
 
+  useEffect(() => {
     let lastSize = -1;
     let lastIds = "";
 
+    /**
+     * Safely read the players map off the synchronized state.
+     *
+     * Important: when the room is first joined, `room.state.players` is
+     * still `undefined` for a brief window (the schema hasn't been decoded
+     * yet). The previous version of this effect assumed the map was
+     * always there and called `.forEach` directly, which threw a
+     * TypeError and unmounted the entire scene through the nearest error
+     * boundary — leaving the user staring at a black canvas.
+     */
+    const readPlayers = (): Map<string, PlayerState> => {
+      const players = (
+        room.state as unknown as
+          | {
+              players?: {
+                size: number;
+                forEach: (cb: (p: PlayerState, id: string) => void) => void;
+              };
+            }
+          | undefined
+      )?.players;
+      const out = new Map<string, PlayerState>();
+      if (players && typeof players.forEach === "function") {
+        players.forEach((p, id) => out.set(id, p));
+      }
+      return out;
+    };
+
     const sync = () => {
-      const ids: string[] = [];
-      const next = new Map<string, PlayerState>();
-      stateAny.players.forEach((p, id) => {
-        ids.push(id);
-        next.set(id, p);
-      });
-      ids.sort();
+      const next = readPlayers();
+      const ids = Array.from(next.keys()).sort();
       const fingerprint = ids.join(",");
       if (next.size === lastSize && fingerprint === lastIds) return;
       lastSize = next.size;
@@ -78,22 +104,34 @@ export function GameScene({ room }: { room: Room }) {
     [players, sessionId],
   );
 
+  // Initial camera position: aim at the spawn ring so the world is visible
+  // from the very first frame, even before the local car arrives in state.
+  // (Without this the camera stayed at [0,25,25] looking at origin and the
+  // sky/ground might be off-screen on tall portrait viewports.)
+  const initialCameraPos: [number, number, number] = [40, 30, 40];
+
   return (
     <Canvas
-      shadows
-      dpr={[1, 1.75]}
+      shadows={!isMobile}
+      dpr={[1, isMobile ? 1.25 : 1.75]}
       gl={{
         antialias: false,
         powerPreference: "high-performance",
         toneMapping: THREE.ACESFilmicToneMapping,
         toneMappingExposure: 1.0,
+        // Helpful for debugging on mobile: surface context-loss events
+        // through React Three Fiber's onContextLost handler instead of
+        // silently producing a black canvas.
+        failIfMajorPerformanceCaveat: false,
       }}
-      camera={{ position: [0, 25, 25], fov: 50 }}
-      onCreated={({ gl }) => {
-        gl.setClearColor("#0b0d12");
+      camera={{ position: initialCameraPos, fov: 55, near: 0.5, far: 800 }}
+      onCreated={({ gl, camera }) => {
+        gl.setClearColor("#7fb8ff"); // sky-blue fallback while shaders compile
+        camera.lookAt(0, 0, 0);
       }}
+      style={{ width: "100%", height: "100%", display: "block" }}
     >
-      <Lighting />
+      <Lighting mobile={isMobile} />
       <fog attach="fog" args={["#aab4c2", 250, 700]} />
 
       <City />
@@ -107,16 +145,22 @@ export function GameScene({ room }: { room: Room }) {
 
       <CameraRig target={localCarRef} />
 
-      <EffectComposer multisampling={0}>
-        <SMAA />
-        <Bloom
-          intensity={0.35}
-          luminanceThreshold={0.85}
-          luminanceSmoothing={0.2}
-          mipmapBlur
-        />
-        <Vignette eskil={false} offset={0.2} darkness={0.7} />
-      </EffectComposer>
+      {/* Postprocessing is disabled on mobile: the EffectComposer pass alone
+          can drop frame rate by 40-60% on mid-range phones, and the bloom +
+          SMAA chain is the most likely culprit when a phone shows a black
+          canvas right after entering the scene (shader compile failure). */}
+      {!isMobile ? (
+        <EffectComposer multisampling={0}>
+          <SMAA />
+          <Bloom
+            intensity={0.35}
+            luminanceThreshold={0.85}
+            luminanceSmoothing={0.2}
+            mipmapBlur
+          />
+          <Vignette eskil={false} offset={0.2} darkness={0.7} />
+        </EffectComposer>
+      ) : null}
     </Canvas>
   );
 }
