@@ -4,12 +4,12 @@
   "private": true,
   "description": "3D online multiplayer racing game (open-world city, top-down) with React + Three.js + Colyseus",
   "scripts": {
-    "dev": "pnpm --parallel -r dev",
-    "dev:client": "pnpm -F client dev",
-    "dev:server": "pnpm -F server dev",
-    "build": "pnpm -r build",
-    "start:server": "pnpm -F server start",
-    "lint": "pnpm -r lint",
+    "dev": "pnpm --parallel --filter=@3dg/server --filter=@3dg/client dev",
+    "dev:client": "pnpm --filter=@3dg/client dev",
+    "dev:server": "pnpm --filter=@3dg/server dev",
+    "build": "pnpm --filter=@3dg/client build && pnpm --filter=@3dg/server build",
+    "start": "pnpm --filter=@3dg/server start",
+    "start:server": "pnpm --filter=@3dg/server start",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {

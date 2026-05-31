@@ -4,6 +4,8 @@ import { attachKeyboard } from "./input/keyboard";
 import { Lobby } from "./ui/Lobby";
 import { HUD } from "./ui/HUD";
 import { TouchControls } from "./ui/TouchControls";
+import { DebugOverlay } from "./ui/DebugOverlay";
+import { ErrorBoundary } from "./ui/ErrorBoundary";
 import { GameScene } from "./scene/GameScene";
 
 /**
@@ -28,11 +30,12 @@ export function App() {
   return (
     <div className="relative h-full w-full">
       {phase === "playing" && room ? (
-        <>
+        <ErrorBoundary label="3D scene">
           <GameScene room={room} />
           <HUD room={room} />
           <TouchControls />
-        </>
+          <DebugOverlay room={room} />
+        </ErrorBoundary>
       ) : null}
 
       {phase !== "playing" ? <Lobby /> : null}

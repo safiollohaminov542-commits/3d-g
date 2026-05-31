@@ -51,7 +51,13 @@ export function Player({ state, room, groupRef }: PlayerProps) {
     const g = localGroup.current;
     if (g) {
       targetPos.set(state.x, state.y, state.z);
-      targetQuat.set(state.qx, state.qy, state.qz, state.qw);
+      // Guard against an all-zero quaternion (which can happen for one
+      // frame between PlayerState construction and the first server
+      // patch); slerping toward it would NaN out the entire transform.
+      const w = state.qw === 0 && state.qx === 0 && state.qy === 0 && state.qz === 0
+        ? 1
+        : state.qw;
+      targetQuat.set(state.qx, state.qy, state.qz, w);
       const k = 1 - Math.exp(-dt * 18);
       g.position.lerp(targetPos, k);
       g.quaternion.slerp(targetQuat, k);

@@ -28,15 +28,28 @@ export function HUD({ room }: HUDProps) {
       if (t - last < 100) return;
       last = t;
 
-      const stateAny = room.state as unknown as {
-        players: { get: (id: string) => PlayerState | undefined; size: number };
-      };
-      const me = sessionId ? stateAny.players.get(sessionId) : null;
+      // The synchronized state is decoded asynchronously after join, so
+      // `room.state.players` may be undefined for the first few frames.
+      // Guard everything to avoid crashing the HUD (which would propagate
+      // up to the ErrorBoundary and hide the game scene).
+      const players = (
+        room.state as unknown as
+          | {
+              players?: {
+                get: (id: string) => PlayerState | undefined;
+                size: number;
+              };
+            }
+          | undefined
+      )?.players;
+      if (!players) return;
+
+      const me = sessionId ? players.get(sessionId) : null;
       if (me) {
         const v = Math.hypot(me.vx, me.vz);
         setSpeedKmh(Math.round(v * 3.6));
       }
-      setCount(stateAny.players.size);
+      setCount(players.size);
     };
 
     raf = requestAnimationFrame(tick);
