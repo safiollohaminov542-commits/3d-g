@@ -57,15 +57,33 @@ pnpm dev
 Or, in two terminals:
 
 ```bash
-pnpm dev:server   # http://localhost:2567 (Colyseus + /colyseus monitor + /health)
-pnpm dev:client   # http://localhost:5173
+pnpm dev:server   # game server on http://localhost:2567
+pnpm dev:client   # Vite dev server on http://localhost:5173
 ```
 
-The client auto-discovers the server URL based on `window.location` and
-defaults to `ws://<host>:2567`. To override, set `VITE_SERVER_URL`:
+> **Important:** while developing, open **`http://<host>:5173/`** (Vite),
+> not `:2567/`. The game server only serves the WebSocket, `/health`, and
+> `/colyseus` monitor in dev mode — visiting `:2567/` shows a landing
+> page with these instructions, not the game.
+>
+> The client auto-detects the server: if the page is loaded from port
+> `5173` it connects to `ws://<host>:2567`; otherwise it uses the same
+> origin as the page (handy when the server hosts both, see below).
+> Override with `VITE_SERVER_URL` if you have a custom setup:
+>
+> ```bash
+> VITE_SERVER_URL=wss://yourdomain.com pnpm -F @3dg/client build
+> ```
+
+### Single-port production mode
+
+After `pnpm build`, the server automatically picks up the built client
+from `packages/client/dist/` and serves it from `/`. So in production
+you only need **one** process and **one** port:
 
 ```bash
-VITE_SERVER_URL=ws://192.168.1.10:2567 pnpm dev:client
+pnpm build
+pnpm start:server   # → http://<host>:2567/  (the whole game)
 ```
 
 ### Type-check / build everything
