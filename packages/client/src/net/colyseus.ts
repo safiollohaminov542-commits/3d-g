@@ -5,18 +5,31 @@ import { ROOM_NAME } from "@3dg/shared";
  * Resolve the Colyseus WebSocket URL.
  *
  * Priority order:
- *   1. Explicit `VITE_SERVER_URL` build-time env var.
- *   2. Same host as the page over `ws(s)` on port 2567 (matches local dev
- *      and a typical reverse-proxy deployment where /colyseus is proxied).
+ *   1. Explicit `VITE_SERVER_URL` build-time env var (highest priority,
+ *      use this when the client is served from a different host/port than
+ *      the server, or behind a reverse proxy with a custom path).
+ *   2. Same origin as the page when running on a non-Vite port — i.e. the
+ *      page was served by the Colyseus server itself in production. We
+ *      reuse the page's host + port and just swap http(s) for ws(s).
+ *   3. Vite dev server (default port 5173) → assume the Colyseus server
+ *      runs alongside it on port 2567 of the same host.
+ *   4. Fallback for non-browser environments: localhost:2567.
  */
 export function getServerUrl(): string {
   const envUrl = import.meta.env.VITE_SERVER_URL;
   if (envUrl && envUrl.length > 0) return envUrl;
 
   if (typeof window !== "undefined") {
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.hostname;
-    return `${proto}//${host}:2567`;
+    const { protocol, hostname, port } = window.location;
+    const wsProto = protocol === "https:" ? "wss:" : "ws:";
+
+    // Vite dev server runs on its own port; the game server is separate.
+    const isViteDev = port === "5173";
+    const targetPort = isViteDev ? "2567" : port;
+
+    return targetPort
+      ? `${wsProto}//${hostname}:${targetPort}`
+      : `${wsProto}//${hostname}`;
   }
   return "ws://localhost:2567";
 }
